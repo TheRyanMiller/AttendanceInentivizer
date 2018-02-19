@@ -9,12 +9,12 @@ contract AttendanceData {
     uint totalEventsAttended;
     mapping(address => Validator) validators;
     address[] validatorList;
-    uint listPointer;
+    uint256 listPointer;
   }
 
   struct Validator {
     bool hasValidated;
-    uint listPointer;
+    uint256 listPointer;
     uint eventId;
   }
 
@@ -35,10 +35,10 @@ contract AttendanceData {
     _;
   }
 
-  function AttendanceData() public onlyBy(owner) {
+  function AttendanceData() public {
     unclaimedValue=0;
     currentEventValue=0;
-    owner = _owner;
+    owner = msg.sender;
   }
 
   function isAttendee(address attendeeAddress) public constant returns(bool isAttendee) {
@@ -60,7 +60,7 @@ contract AttendanceData {
       3.
   */
   function hasValidated(address attendeeAddress, address validatorAddress) public constant returns(bool hasValidated) {
-    if(validatorList.length == 0) return false;
+    if(attendees[attendeeAddress].validatorList.length == 0) return false;
     if(isAttendee(attendeeAddress)) throw;
     return attendees[attendeeAddress].validators[validatorAddress].hasValidated;
   }
@@ -69,7 +69,7 @@ contract AttendanceData {
     return attendeeList.length;
   }
 
-  function newAttendee(address attendeeAddress, string name, uint amountDonated) public returns(bool success) {
+  function newAttendee(address attendeeAddress, string name, uint amountDonated) public payable returns(bool success) {
     /*
       Adding new attendee:
         1. Make sure attendee doesn't already exist
@@ -86,7 +86,7 @@ contract AttendanceData {
     }
     else{
       attendees[attendeeAddress].name = name;
-      attendees[attendeeAddress].eventId = eventId;
+      attendees[attendeeAddress].lastAttendedEvent = eventId;
       attendees[attendeeAddress].amountDonated = amountDonated;
       attendees[attendeeAddress].listPointer = attendeeList.push(attendeeAddress) - 1;
       attendees[attendeeAddress].totalEventsAttended=1;
@@ -94,10 +94,10 @@ contract AttendanceData {
     }
   }
 
-  function updateAttendee(address attendeeAddress, string name, uint amountDonated, uint eventId) private returns(bool success) {
+  function updateAttendee(address attendeeAddress, string name, uint amountDonated) private returns(bool success) {
     if(!isAttendee(attendeeAddress)) throw;
     attendees[attendeeAddress].name = name;
-    attendees[attendeeAddress].eventId = eventId;
+    attendees[attendeeAddress].lastAttendedEvent = eventId;
     attendees[attendeeAddress].amountDonated = amountDonated;
     currentEventValue+=amountDonated;
     unclaimedValue+=amountDonated;
@@ -115,7 +115,7 @@ contract AttendanceData {
     if(!isAttendee(validatorAddress)) throw;//Make sure that validator is an attendee too
     if(hasValidated(attendeeAddress, validatorAddress)) throw; // check if already validated before
     attendees[attendeeAddress].validators[validatorAddress].hasValidated = true;
-    attendees[attendeeAddress].validatorList[validatorAddress].listPointer = attendees[attendeeAddress].validatorList.push(validatorAddress) - 1;
+    attendees[attendeeAddress].validators[validatorAddress].listPointer = attendees[attendeeAddress].validatorList.push(validatorAddress) - 1;
     return true;
   }
 
@@ -131,7 +131,7 @@ contract AttendanceData {
 
   function payout() public returns(bool success) {
     require (attendeeList.length>0);
-    winner = calculateWinner();
+    address winner = calculateWinner();
     winnings[winner] += currentEventValue;
     currentEventValue = 0;
     resetAttendance();
@@ -148,7 +148,7 @@ contract AttendanceData {
 
   function collectWinnings(address caller) public returns(bool success){
     //Can only be run by .payOut()
-    if(!winnings[caller] > 0) throw;
+    if(winnings[caller] > 0) throw;
     caller.transfer(winnings[caller]);
     return true;
   }
@@ -158,7 +158,7 @@ contract AttendanceData {
       1. Grab list of validated addresses
       2. Add ransomized selection algorithm
     */
-    return donaterList[0];
+    return attendeeList[0];
   }
 
 

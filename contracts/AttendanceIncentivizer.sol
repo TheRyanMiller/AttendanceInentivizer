@@ -1,6 +1,6 @@
 pragma solidity ^0.4.11;
 
-import "AttendanceDataInterface.sol";
+import "./AttendanceDataInterface.sol";
 
 contract AttendanceIncentivizer {
   event Donate(address indexed donater, uint indexed amount);
@@ -11,7 +11,7 @@ contract AttendanceIncentivizer {
   uint constant minimumDonation = 1;
   address private owner;
   address private datastore;
-  AttendeeDataInterface adi;
+  AttendanceDataInterface adi;
 
   modifier onlyBy(address _account){
     require(msg.sender == _account);
@@ -23,7 +23,7 @@ contract AttendanceIncentivizer {
 
   function updateDatastore(address newDatastore) public onlyBy(owner){
     datastore = newDatastore;
-    adi = AttendeeDataInterface(datastore);
+    adi = AttendanceDataInterface(datastore);
   }
 
   function updateOwner(address newOwner) public onlyBy(owner){
@@ -33,15 +33,16 @@ contract AttendanceIncentivizer {
   function AttendanceIncentivizer(address _datastore) public {
     owner = msg.sender;
     datastore = _datastore;
-    adi = AttendeeDataInterface(_datastore);
+    adi = AttendanceDataInterface(datastore);
   }
 
-  function donate(string name, ) public payable {
+  function donate(string name) public payable returns(bool success) {
     //require(msg.value >= minimumDonation);
     if(msg.value==0) throw;
-    if(!adi.newAttendee(msg.sender, string name, msg.value)) throw;
-    donaters[msg.sender] += msg.value; //add to value associated with address
+    if(!adi.newAttendee(msg.sender, name, msg.value)) throw;
+    datastore.transfer(msg.value);
     Donate(msg.sender, msg.value); //Event
+    return true;
   }
 
   function validate(address validatee) public {
@@ -51,7 +52,7 @@ contract AttendanceIncentivizer {
   }
 
   function payout() public returns (bool success){
-    return adi.payout()
+    return adi.payout();
   }
 
 }
